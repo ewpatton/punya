@@ -27,7 +27,7 @@ import android.widget.CompoundButton.OnCheckedChangeListener;
  */
 @SimpleObject
 public abstract class ToggleBase<T extends CompoundButton> extends AndroidViewComponent
-        implements OnCheckedChangeListener, OnFocusChangeListener {
+        implements OnCheckedChangeListener, OnFocusChangeListener, LDComponent {
 
   protected T view;
 
