@@ -292,8 +292,8 @@ Blockly.Blocks['logic_triple_pattern'] = {
       .setCheck(['qname', 'variable']);
     this.appendValueInput('PREDICATE').appendField('predicate')
       .setCheck(['qname', 'variable']);
-    this.appendValueInput('OBJECT').appendField('object')
-      .setCheck(['qname', 'variable']);
+    this.appendValueInput('OBJECT').appendField('object');
+      // .setCheck([ 'qname', 'variable', 'boolean', 'text', 'number']);
     this.setInputsInline(true);
     var type = this.workspace.newBlock('logic_rdf_type');
     type.setShadow(true);
