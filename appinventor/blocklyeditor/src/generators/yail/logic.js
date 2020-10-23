@@ -1,5 +1,5 @@
 // -*- mode: java; c-basic-offset: 2; -*-
-// Copyright 2012 Massachusetts Institute of Technology. All rights reserved.
+// Copyright 2012-2020 Massachusetts Institute of Technology. All rights reserved.
 
 /**
  * @license
@@ -89,6 +89,66 @@ Blockly.Yail['logic_compare'] = function() {
 Blockly.Yail['logic_ruleset'] = function() {
   var rules = Blockly.Rules.statementToCode(this, 'RULES');
   var code = Blockly.Yail.quote_(rules);
+  return [ code, Blockly.Yail.ORDER_ATOMIC ];
+}
+
+/**
+ * Defines a global namespace for RDF use.
+ *
+ * @this Blockly.BlockSvg
+ * @returns {string}
+ */
+Blockly.Yail['logic_namespace_decl'] = function() {
+  var code = '(RdfUtil:defineNamespace ';
+  code += Blockly.Yail.quote_(this.getFieldValue('PREFIX') || 'ex');
+  code += ' ';
+  code += Blockly.Yail.valueToCode(this, 'URI', Blockly.Yail.ORDER_NONE);
+  code += ')';
+  return code;
+}
+
+/**
+ * Converts a URI block into a YAIL string.
+ *
+ * @this Blockly.BlockSvg
+ * @returns {[string, number]}
+ */
+Blockly.Yail['logic_uri'] = function() {
+  return [Blockly.Yail.quote_(this.getFieldValue('URI')), Blockly.Yail.ORDER_ATOMIC];
+}
+
+/**
+ * Converts a variable binding reference into a YAIL string.
+ *
+ * @this Blockly.BlockSvg
+ * @returns {[string, number]}
+ */
+Blockly.Yail['logic_binding'] = function() {
+  return [Blockly.Yail.quote_(this.getFieldValue('VARNAME')), Blockly.Yail.ORDER_ATOMIC];
+}
+
+/**
+ * Converts a QName to an expansion based on registered namespaces.
+ *
+ * @this Blockly.BlockSvg
+ * @returns {string}
+ */
+Blockly.Yail['logic_qname'] = function() {
+  var code = '(RdfUtil:expandQName ';
+  code += Blockly.Yail.quote_(this.getFieldValue('PREFIX') + ':' + this.getFieldValue('LOCALNAME'));
+  code += ')';
+  return code;
+}
+
+/**
+ * Converts a SPARQL block into a string for YAIL.
+ *
+ * @this Blockly.Block
+ * @returns {[string, number]}
+ */
+Blockly.Yail['logic_sparql_select'] = function() {
+  var query = Blockly.SPARQL.blockToCode(this);
+  var code = Blockly.Yail.quote_(query);
   return [ code, Blockly.Yail.ORDER_ATOMIC ];
 }
 
