@@ -87,8 +87,6 @@ Blockly.Rules['logic_backward_rule'] = function() {
 Blockly.Rules['logic_triple_pattern'] = function() {
   var subject = Blockly.Rules.valueToCode(this, 'SUBJECT', Blockly.Rules.ORDER_NONE) || Blockly.Rules.RULES_EMTPY_URI;
   var predicate = Blockly.Rules.valueToCode(this, 'PREDICATE', Blockly.Rules.ORDER_NONE) || Blockly.Rules.RULES_EMTPY_URI;
-  if (predicate == "a")
-    predicate = "rdf:type";
   var object = Blockly.Rules.valueToCode(this, 'OBJECT', Blockly.Rules.ORDER_NONE) || Blockly.Rules.RULES_EMTPY_URI;
   return '(' + subject + ' ' + predicate + ' ' + object + ')';
 }
@@ -204,5 +202,5 @@ Blockly.Rules['logic_table_all'] = function() {
 }
 
 Blockly.Rules['logic_rdf_type'] = function() {
-  return ['a', Blockly.Rules.ORDER_ATOMIC];
+  return ['rdf:type', Blockly.Rules.ORDER_ATOMIC];
 }
