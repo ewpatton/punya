@@ -529,20 +529,20 @@ public abstract class TextBoxBase extends AndroidViewComponent
    * @return  concept uri
    */
   @SimpleProperty(
-          category = PropertyCategory.LINKED_DATA,
-          description = "<p>Object Type changes how the linked data components "
-                  + "interpret the value of the text. If left blank, the system will "
-                  + "attempt to intelligently identify the type based on features such "
-                  + "as whether the text is a sequence of numbers or begins with "
-                  + "&quot;http://&quot;. If no type is specified and one cannot be "
-                  + "determined, the string will remain untyped.</p>"
-                  + "<p>Recommended values include:</p>"
-                  + "<ul>"
-                  + "<li>xsd:dateTime - for dates and times</li>"
-                  + "<li>xsd:decimal - for decimals (e.g. 3.57)</li>"
-                  + "<li>xsd:integer - for integers (e.g. 137)</li>"
-                  + "<li>xsd:gYear - for years (e.g. 2001)</li>"
-                  + "</ul>")
+      category = PropertyCategory.LINKED_DATA,
+      description = "<p>Object Type changes how the linked data components "
+          + "interpret the value of the text. If left blank, the system will "
+          + "attempt to intelligently identify the type based on features such "
+          + "as whether the text is a sequence of numbers or begins with "
+          + "&quot;http://&quot;. If no type is specified and one cannot be "
+          + "determined, the string will remain untyped.</p>"
+          + "<p>Recommended values include:</p>"
+          + "<ul>"
+          + "<li>xsd:dateTime - for dates and times</li>"
+          + "<li>xsd:decimal - for decimals (e.g. 3.57)</li>"
+          + "<li>xsd:integer - for integers (e.g. 137)</li>"
+          + "<li>xsd:gYear - for years (e.g. 2001)</li>"
+          + "</ul>")
   public String ObjectType() {
     return conceptUri;
   }
