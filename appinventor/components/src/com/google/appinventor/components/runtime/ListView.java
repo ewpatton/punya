@@ -26,8 +26,15 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 
 import android.widget.LinearLayout.LayoutParams;
-import com.google.appinventor.components.annotations.*;
 import com.google.appinventor.components.common.ComponentCategory;
+import com.google.appinventor.components.annotations.DesignerProperty;
+import com.google.appinventor.components.annotations.DesignerComponent;
+import com.google.appinventor.components.annotations.SimpleProperty;
+import com.google.appinventor.components.annotations.SimpleFunction;
+import com.google.appinventor.components.annotations.SimpleEvent;
+import com.google.appinventor.components.annotations.SimpleObject;
+import com.google.appinventor.components.annotations.IsColor;
+import com.google.appinventor.components.annotations.PropertyCategory;
 import com.google.appinventor.components.common.PropertyTypeConstants;
 import com.google.appinventor.components.common.YaVersion;
 import com.google.appinventor.components.runtime.errors.YailRuntimeError;
@@ -53,12 +60,12 @@ import java.util.List;
  */
 
 @DesignerComponent(version = YaVersion.LISTVIEW_COMPONENT_VERSION,
-        description = "<p>This is a visible component that displays a list of text elements." +
-                " <br> The list can be set using the ElementsFromString property" +
-                " or using the Elements block in the blocks editor. </p>",
-        category = ComponentCategory.USERINTERFACE,
-        nonVisible = false,
-        iconName = "images/listView.png")
+    description = "<p>This is a visible component that displays a list of text elements." +
+        " <br> The list can be set using the ElementsFromString property" +
+        " or using the Elements block in the blocks editor. </p>",
+    category = ComponentCategory.USERINTERFACE,
+    nonVisible = false,
+    iconName = "images/listView.png")
 @SimpleObject
 public final class ListView extends AndroidViewComponent implements AdapterView.OnItemClickListener,
         AdapterView.OnItemSelectedListener {
@@ -250,10 +257,6 @@ public final class ListView extends AndroidViewComponent implements AdapterView.
     setAdapterData();
   }
 
-//  @SimpleProperty(description="Query results to show in the ListView. "
-//          "It will show the text values for the first variable found in the bindings.",
-//          category = PropertyCategory.BEHAVIOR)
-
   /**
    * Takes a set of query results, and displays values for the given variable name.",
    * @param bindings
@@ -266,10 +269,12 @@ public final class ListView extends AndroidViewComponent implements AdapterView.
     String varName = showVariable;
     for(Object i : bindings.toArray()) {
       YailDictionary binding = (YailDictionary) i;
-      if (varName == null)
+      if (varName == null) {
         varName = binding.keySet().iterator().next().toString();
-      if (!binding.containsKey(varName))
+      }
+      if (!binding.containsKey(varName)) {
         throw new YailRuntimeError("Variable name " + varName + " not found in bindings", "Error");
+      }
       String item = binding.get(varName).toString();
       items.add(item);
     }
@@ -361,12 +366,15 @@ public final class ListView extends AndroidViewComponent implements AdapterView.
   @SimpleProperty(description="Returns the binding corresponding to the selection in the ListView.",
           category = PropertyCategory.BEHAVIOR)
   public YailDictionary SelectionBinding() {
-    if (bindings == null)
+    if (bindings == null) {
       throw new YailRuntimeError("No bindings set for this ListView.", "Error");
-    if (selectionIndex > 0)
+    }
+    if (selectionIndex > 0) {
       return (YailDictionary) bindings.get(selectionIndex);
-    else
+    }
+    else {
       return null;
+    }
   }
 
   /**
