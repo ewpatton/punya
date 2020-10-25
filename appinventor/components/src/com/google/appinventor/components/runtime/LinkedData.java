@@ -24,6 +24,7 @@ import com.hp.hpl.jena.query.ResultSetFormatter;
 import com.hp.hpl.jena.query.ResultSetRewindable;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.vocabulary.XSD;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -68,6 +69,7 @@ public class LinkedData extends LinkedDataBase<Model> implements
     model.setNsPrefix("sioc", SIOC_NS);
     model.setNsPrefix("geo", GEO_NS);
     model.setNsPrefix("skos", SKOS_NS);
+    model.setNsPrefix("xsd", XSD.getURI());
   }
 
   /**
@@ -185,19 +187,7 @@ public class LinkedData extends LinkedDataBase<Model> implements
    */
   @SimpleFunction
   public boolean ReadDataFromWeb(String path) {
-    try {
-      String type = "RDF/XML";
-      if(path.endsWith(".n3")) {
-        type = "N3";
-      } else if(path.endsWith(".ttl")) {
-        type = "TURTLE";
-      }
-      model.read(path, type);
-    } catch(Exception e) {
-      Log.w(LOG_TAG, "Unable to read model.", e);
-      return false;
-    }
-    return true;
+    return loadRemoteResource(path);
   }
 
   /**
