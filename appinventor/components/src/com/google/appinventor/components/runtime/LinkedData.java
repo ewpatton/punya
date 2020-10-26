@@ -107,9 +107,9 @@ public class LinkedData extends LinkedDataBase<Model> implements
    * @param query Query text to execute
    */
   @SimpleFunction
-  public void ExecuteSPARQLQuery(final Object query) {
+  public void ExecuteSPARQLQuery(final String query) {
     final Runnable call = new Runnable() {
-      public void run() { executeQuery(query.toString()); }
+      public void run() { executeQuery(query); }
     };
     AsynchUtil.runAsynchronously(call);
   }
@@ -261,7 +261,7 @@ public class LinkedData extends LinkedDataBase<Model> implements
    * Takes a component implementing the LDComponent interface and uses the properties defined
    * there to insert a triple into the model using the given subject.
    * @param component An AndroidViewComponent with a PropertyURI defined
-   * @param dmodel Model reference obtained from {@link #OpenModel()}
+   * @param model Model reference obtained from {@link #OpenModel()}
    * @param subject URI or CURIE representing the subject the property,value pair will be added to
    * @return true if the component was successfully converted into a triple, otherwise false
    */
