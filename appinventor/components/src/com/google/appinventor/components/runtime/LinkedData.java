@@ -107,9 +107,9 @@ public class LinkedData extends LinkedDataBase<Model> implements
    * @param query Query text to execute
    */
   @SimpleFunction
-  public void ExecuteSPARQLQuery(final String query) {
+  public void ExecuteSPARQLQuery(final Object query) {
     final Runnable call = new Runnable() {
-      public void run() { executeQuery(query); }
+      public void run() { executeQuery(query.toString()); }
     };
     AsynchUtil.runAsynchronously(call);
   }
@@ -141,8 +141,14 @@ public class LinkedData extends LinkedDataBase<Model> implements
           RetrievedResults("SELECT", solutions);
         }
       });
-    } catch ( Exception e ) {
+    } catch (final Exception e ) {
       Log.w(LOG_TAG, e);
+      Log.w(LOG_TAG, queryText);
+      form.runOnUiThread(new Runnable() {
+        public void run() {
+          FailedToExecuteQuery(e.getMessage());
+        }
+      });
     }
   }
 
@@ -177,6 +183,14 @@ public class LinkedData extends LinkedDataBase<Model> implements
   @SimpleEvent
   public void UnsupportedQueryType() {
     EventDispatcher.dispatchEvent(this, "UnsupportedQueryType");
+  }
+
+  /**
+   * Event raised when a SPARQL query raises an exception.
+   */
+  @SimpleEvent
+  public void FailedToExecuteQuery(String error) {
+    EventDispatcher.dispatchEvent(this, "FailedToExecuteQuery", error);
   }
 
   /**
@@ -247,7 +261,7 @@ public class LinkedData extends LinkedDataBase<Model> implements
    * Takes a component implementing the LDComponent interface and uses the properties defined
    * there to insert a triple into the model using the given subject.
    * @param component An AndroidViewComponent with a PropertyURI defined
-   * @param model Model reference obtained from {@link #OpenModel()}
+   * @param dmodel Model reference obtained from {@link #OpenModel()}
    * @param subject URI or CURIE representing the subject the property,value pair will be added to
    * @return true if the component was successfully converted into a triple, otherwise false
    */
