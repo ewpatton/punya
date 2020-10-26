@@ -99,7 +99,7 @@ Blockly.Yail['logic_ruleset'] = function() {
  * @returns {string}
  */
 Blockly.Yail['logic_namespace_decl'] = function() {
-  var code = '(RdfUtil:defineNamespace ';
+  var code = '(define-namespace  ';
   code += Blockly.Yail.quote_(this.getFieldValue('PREFIX') || 'ex');
   code += ' ';
   code += Blockly.Yail.valueToCode(this, 'URI', Blockly.Yail.ORDER_NONE);
@@ -134,7 +134,7 @@ Blockly.Yail['logic_binding'] = function() {
  * @returns {string}
  */
 Blockly.Yail['logic_qname'] = function() {
-  var code = '(RdfUtil:expandQName ';
+  var code = '(expand-qname ';
   code += Blockly.Yail.quote_(this.getFieldValue('PREFIX') + ':' + this.getFieldValue('LOCALNAME'));
   code += ')';
   return [code, Blockly.Yail.ORDER_ATOMIC];
@@ -147,8 +147,23 @@ Blockly.Yail['logic_qname'] = function() {
  * @returns {[string, number]}
  */
 Blockly.Yail['logic_sparql_select'] = function() {
-  var query = Blockly.SPARQL.blockToCode(this);
-  var code = Blockly.Yail.quote_(query);
+  var query = Blockly.SPARQL.blockToCode1(this);
+  var code;
+  if (Blockly.SPARQL.yailBlocks) {
+    var parts = query.split('```');
+    code = '(string-append';
+    for (var i = 0; i < parts.length; i++) {
+      code += ' ';
+      if (parts[i].substr(0, 4) === 'yail') {
+        code += parts[i].substr(4);
+      } else {
+        code += Blockly.Yail.quote_(parts[i]);
+      }
+    }
+    code += ')';
+  } else {
+    code = Blockly.Yail.quote_(query);
+  }
   return [ code, Blockly.Yail.ORDER_ATOMIC ];
 }
 

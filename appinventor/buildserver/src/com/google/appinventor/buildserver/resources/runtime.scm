@@ -2598,6 +2598,12 @@ Dictionary implementation.
 ;;;;Text implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define (sparql-quote str)
+  (if (string? str)
+    (if (string-contains str "\"")
+      (string-append "\"\"\"" str "\"\"\"")
+      (string-append "\"" str "\""))
+    str))
 
 (define (make-disjunct x)
   (cond ((null? (cdr x)) (Pattern:quote (car x)))
@@ -2770,6 +2776,12 @@ Dictionary implementation.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; End of Color implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (expand-qname qname)
+  (RdfUtil:expandQName qname))
+
+(define (define-namespace prefix uri)
+  (RdfUtil:defineNamespace prefix uri))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Multiple screens
