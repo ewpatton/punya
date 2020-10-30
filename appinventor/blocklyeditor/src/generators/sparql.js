@@ -273,11 +273,7 @@ Blockly.SPARQL['logic_sparql_graph'] = function() {
  * @returns {[string, number]}
  */
 Blockly.SPARQL['logic_sparql_builtin_unary'] = function() {
-<<<<<<< HEAD
-  var a0 = Blockly.Rules.valueToCode(this, 'ARG0', Blockly.Rules.ORDER_NONE);
-=======
   var a0 = Blockly.SPARQL.valueToCode(this, 'ARG0', Blockly.SPARQL.ORDER_NONE);
->>>>>>> 176b06759bede82672f3646360f764f3922088b4
   var op = this.getFieldValue('OPERATOR');
 
   var code = op + "(" + a0 + ")";
@@ -497,8 +493,18 @@ Blockly.SPARQL['logic_uri'] = function() {
  * @returns {[string, number]}
  */
 Blockly.SPARQL['logic_qname'] = function() {
-  return [this.getFieldValue('PREFIX') + ':' + this.getFieldValue('LOCALNAME'),
-    Blockly.SPARQL.ORDER_ATOMIC];
+  return ['<' + this.getFieldValue('NAMESPACE') + this.getFieldValue('LOCALNAME') + '>',
+     Blockly.SPARQL.ORDER_ATOMIC];
+}
+
+/**
+ *
+ * @this Blockly.BlockSvg
+ * @returns {[string, number]}
+ */
+Blockly.SPARQL['logic_qname_select'] = function() {
+  return ['<' + this.getFieldValue('URI') + '>',
+     Blockly.SPARQL.ORDER_ATOMIC];
 }
 
 /**
@@ -512,6 +518,11 @@ Blockly.SPARQL['logic_negate'] = function() {
   return [code + arg, Blockly.SPARQL.ORDER_UNARY];
 }
 
+function wrapSwTerm(term) {
+  term = (term.startsWith("http:") ? "<" + term + ">" : term);
+  return term;
+}
+
 /**
  * Convert component getters into SPARQL.
  *
@@ -521,7 +532,7 @@ Blockly.SPARQL['logic_negate'] = function() {
 Blockly.SPARQL['component_set_get'] = function() {
   Blockly.SPARQL.yailBlocks++;
   var code = '```yail(sparql-quote ';
-  code += Blockly.Yail.blockToCode(this)[0];
+  code += wrapSwTerm(Blockly.Yail.blockToCode(this)[0]);
   code += ')```';
   return [code, Blockly.SPARQL.ORDER_ATOMIC];
 }
@@ -583,7 +594,7 @@ Blockly.SPARQL['procedures_callreturn'] = function() {
 Blockly.SPARQL['lexical_variable_get'] = function() {
   Blockly.SPARQL.yailBlocks++;
   var code = '```yail';
-  code += Blockly.Yail.blockToCode(this)[0];
+  code += wrapSwTerm(Blockly.Yail.blockToCode(this)[0]);
   code += '```';
   return [code, Blockly.SPARQL.ORDER_ATOMIC];
 }
