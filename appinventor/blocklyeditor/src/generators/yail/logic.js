@@ -133,15 +133,24 @@ Blockly.Yail['logic_binding'] = function() {
 }
 
 /**
- * Converts a QName to an expansion based on registered namespaces.
+ * Converts a QName to an expansion.
  *
  * @this Blockly.BlockSvg
  * @returns {string}
  */
 Blockly.Yail['logic_qname'] = function() {
-  var code = '(expand-qname ';
-  code += Blockly.Yail.quote_(this.getFieldValue('PREFIX') + ':' + this.getFieldValue('LOCALNAME'));
-  code += ')';
+  var code = Blockly.Yail.quote_(this.getFieldValue('NAMESPACE') + this.getFieldValue('LOCALNAME'));
+  return [code, Blockly.Yail.ORDER_ATOMIC];
+}
+
+/**
+ * Converts a QName to an expansion.
+ *
+ * @this Blockly.BlockSvg
+ * @returns {string}
+ */
+Blockly.Yail['logic_qname_select'] = function() {
+  var code = Blockly.Yail.quote_(this.getFieldValue('URI'));
   return [code, Blockly.Yail.ORDER_ATOMIC];
 }
 
