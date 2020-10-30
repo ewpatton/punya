@@ -586,6 +586,16 @@ public abstract class MockComponent extends Composite implements PropertyChangeL
   }
 
   /**
+   * Renames the component to {@code newName}.
+   * @param newName The new name for the component.
+   */
+  public void rename(String newName) {
+    String oldName = getPropertyValue(PROPERTY_NAME_NAME);
+    properties.changePropertyValue(PROPERTY_NAME_NAME, newName);
+    getForm().fireComponentRenamed(this, oldName);
+  }
+
+  /**
    * Returns the properties set for the component.
    *
    * @return  properties
@@ -756,7 +766,7 @@ public abstract class MockComponent extends Composite implements PropertyChangeL
    *
    * @return  owning component container for this component
    */
-  protected final MockContainer getContainer() {
+  public final MockContainer getContainer() {
     return container;
   }
 
@@ -1215,6 +1225,26 @@ public abstract class MockComponent extends Composite implements PropertyChangeL
    */
   public void upgradeComplete() {
     this.componentDefinition = COMPONENT_DATABASE.getComponentDefinition(this.type); //Update ComponentDefinition
+  }
+
+  /**
+   * Hides or shows the specified property of the Component.
+   *
+   * @param property  Property key
+   * @param show  will show the property if set to true, will hide it otherwise
+   */
+  protected void showProperty(String property, boolean show) {
+    // Get the current type flags of the Property
+    int type = properties.getProperty(property).getType();
+
+    if (show) {
+      type &= ~EditableProperty.TYPE_INVISIBLE; // AND with all bits except INVISIBLE flag
+    } else {
+      type |= EditableProperty.TYPE_INVISIBLE; // OR with INVISIBLE flag to add invisibility
+    }
+
+    // Set the new type
+    properties.getProperty(property).setType(type);
   }
 
   public native void setShouldCancel(Event event, boolean cancelable)/*-{

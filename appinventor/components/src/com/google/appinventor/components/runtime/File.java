@@ -1,37 +1,39 @@
 // -*- mode: java; c-basic-offset: 2; -*-
 // Copyright 2009-2011 Google, All Rights reserved
-// Copyright 2011-2018 MIT, All rights reserved
+// Copyright 2011-2020 MIT, All rights reserved
 // Released under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 package com.google.appinventor.components.runtime;
 
+import android.Manifest;
+import android.os.Environment;
+import android.util.Log;
+
 import com.google.appinventor.components.annotations.DesignerComponent;
+import com.google.appinventor.components.annotations.DesignerProperty;
+import com.google.appinventor.components.annotations.PropertyCategory;
 import com.google.appinventor.components.annotations.SimpleEvent;
 import com.google.appinventor.components.annotations.SimpleFunction;
 import com.google.appinventor.components.annotations.SimpleObject;
 import com.google.appinventor.components.annotations.SimpleProperty;
 import com.google.appinventor.components.annotations.UsesPermissions;
 import com.google.appinventor.components.common.ComponentCategory;
+import com.google.appinventor.components.common.PropertyTypeConstants;
 import com.google.appinventor.components.common.YaVersion;
 import com.google.appinventor.components.runtime.errors.PermissionException;
 import com.google.appinventor.components.runtime.util.AsynchUtil;
 import com.google.appinventor.components.runtime.util.ErrorMessages;
 import com.google.appinventor.components.runtime.util.FileUtil;
 import com.google.appinventor.components.runtime.util.MediaUtil;
-
-import android.Manifest;
-import android.app.Activity;
-import android.os.Environment;
-import android.util.Log;
+import com.google.appinventor.components.runtime.util.QUtil;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.StringWriter;
 
 /**
  * Non-visible component for storing and retrieving files. Use this component to write or read files
@@ -52,12 +54,7 @@ import java.io.StringWriter;
     iconName = "images/file.png")
 @SimpleObject
 @UsesPermissions(permissionNames = "android.permission.WRITE_EXTERNAL_STORAGE, android.permission.READ_EXTERNAL_STORAGE")
-public class File extends AndroidNonvisibleComponent implements Component {
-  public static final String NO_ASSETS = "No_Assets";
-  private final Activity activity;
-  private boolean isRepl = false;
-  private final int BUFFER_LENGTH = 4096;
-  private static final String LOG_TAG = "FileComponent";
+public class File extends FileBase {
 
   /**
    * Creates a new File component.
@@ -65,10 +62,6 @@ public class File extends AndroidNonvisibleComponent implements Component {
    */
   public File(ComponentContainer container) {
     super(container.$form());
-    if (form instanceof ReplForm) { // Note: form is defined in our superclass
-      isRepl = true;
-    }
-    activity = (Activity) container.$context();
   }
 
   /**
@@ -143,43 +136,7 @@ public class File extends AndroidNonvisibleComponent implements Component {
       "slash, it will be read from the applications private storage (for packaged " +
       "apps) and from /sdcard/AppInventor/data for the Companion.")
   public void ReadFrom(final String fileName) {
-    form.askPermission(Manifest.permission.READ_EXTERNAL_STORAGE, new PermissionResultHandler() {
-      @Override
-      public void HandlePermissionResponse(String permission, boolean granted) {
-        if (granted) {
-          try {
-            InputStream inputStream;
-            if (fileName.startsWith("//")) {
-              inputStream = form.openAsset(fileName.substring(2));
-            } else {
-              String filepath = AbsoluteFileName(fileName);
-              Log.d(LOG_TAG, "filepath = " + filepath);
-              inputStream = FileUtil.openFile(filepath);
-            }
-
-            final InputStream asyncInputStream = inputStream;
-            AsynchUtil.runAsynchronously(new Runnable() {
-              @Override
-              public void run() {
-                AsyncRead(asyncInputStream, fileName);
-              }
-            });
-          } catch (PermissionException e) {
-            form.dispatchPermissionDeniedEvent(File.this, "ReadFrom", e);
-          } catch (FileNotFoundException e) {
-            Log.e(LOG_TAG, "FileNotFoundException", e);
-            form.dispatchErrorOccurredEvent(File.this, "ReadFrom",
-                ErrorMessages.ERROR_CANNOT_FIND_FILE, fileName);
-          } catch (IOException e) {
-            Log.e(LOG_TAG, "IOException", e);
-            form.dispatchErrorOccurredEvent(File.this, "ReadFrom",
-                ErrorMessages.ERROR_CANNOT_FIND_FILE, fileName);
-          }
-        } else {
-          form.dispatchPermissionDeniedEvent(File.this, "ReadFrom", permission);
-        }
-      }
-    });
+    readFromFile(fileName);
   }
 
 
@@ -198,6 +155,7 @@ public class File extends AndroidNonvisibleComponent implements Component {
       "located in the programs private storage will be deleted. Starting the file with // is an error " +
       "because assets files cannot be deleted.")
   public void Delete(final String fileName) {
+    final boolean legacy = this.legacy;
     form.askPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, new PermissionResultHandler() {
       @Override
       public void HandlePermissionResponse(String permission, boolean granted) {
@@ -207,8 +165,8 @@ public class File extends AndroidNonvisibleComponent implements Component {
                 ErrorMessages.ERROR_CANNOT_DELETE_ASSET, fileName);
             return;
           }
-          String filepath = AbsoluteFileName(fileName);
-          if (MediaUtil.isExternalFile(fileName)) {
+          String filepath = AbsoluteFileName(fileName, legacy);
+          if (MediaUtil.isExternalFile(form, fileName)) {
             if (form.isDeniedPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
               form.dispatchPermissionDeniedEvent(File.this, "Delete",
                   new PermissionException(Manifest.permission.WRITE_EXTERNAL_STORAGE));
@@ -241,11 +199,12 @@ public class File extends AndroidNonvisibleComponent implements Component {
       }
       return;
     }
+    final boolean legacy = this.legacy;
     final Runnable operation = new Runnable() {
       @Override
       public void run() {
-        final String filepath = AbsoluteFileName(filename);
-        if (MediaUtil.isExternalFile(filepath)) {
+        final String filepath = AbsoluteFileName(filename, legacy);
+        if (MediaUtil.isExternalFile(form, filepath)) {
           form.assertPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
         final java.io.File file = new java.io.File(filepath);
@@ -272,7 +231,7 @@ public class File extends AndroidNonvisibleComponent implements Component {
           out.close();
           fileWriter.close();
 
-          activity.runOnUiThread(new Runnable() {
+          form.runOnUiThread(new Runnable() {
             @Override
             public void run() {
               AfterFileSaved(filename);
@@ -302,72 +261,46 @@ public class File extends AndroidNonvisibleComponent implements Component {
     });
   }
 
-  /**
-   * Replace Windows-style CRLF with Unix LF as String. This allows
-   * end-user to treat Windows text files same as Unix or Mac. In
-   * future, allowing user to choose to normalize new lines might also
-   * be nice - in case someone really wants to detect Windows-style
-   * line separators, or save a file which was read (and expect no
-   * changes in size or checksum).
-   * @param s to convert
-   */
-
-  private String normalizeNewLines(String s) {
-    return s.replaceAll("\r\n", "\n");
-  }
-
 
   /**
-   * Asynchronously reads from the given file. Calls the main event thread
-   * when the function has completed reading from the file.
+   * Asynchronously reads from the given file. Calls the main event
+   * thread when the function has completed reading from the
+   * file. This method takes ownership of {@code fileInput} and will
+   * close the stream at the end of the operation. The caller must not
+   * close the stream since this method will return immediately and
+   * reading will occur on a separate thread.
+   * 
    * @param fileInput the stream to read from
    * @param fileName the file to read
    * @throws FileNotFoundException
    * @throws IOException when the system cannot read the file
    */
-  private void AsyncRead(InputStream fileInput, final String fileName) {
-    InputStreamReader input = null;
-    try {
-      input = new InputStreamReader(fileInput);
-      StringWriter output = new StringWriter();
-      char [] buffer = new char[BUFFER_LENGTH];
-      int offset = 0;
-      int length = 0;
-      while ((length = input.read(buffer, offset, BUFFER_LENGTH)) > 0) {
-        output.write(buffer, 0, length);
-      }
-
-      // Now that we have the file as a String,
-      // normalize any line separators to avoid compatibility between Windows and Mac
-      // text files. Users can expect \n to mean a line separator regardless of how
-      // file was created. Currently only doing this for files opened locally - not files we pull
-      // from other places like URLs.
-
-      final String text = normalizeNewLines(output.toString());
-
-      activity.runOnUiThread(new Runnable() {
-        @Override
-        public void run() {
-          GotText(text);
-        }
-      });
-    } catch (FileNotFoundException e) {
-      Log.e(LOG_TAG, "FileNotFoundException", e);
-      form.dispatchErrorOccurredEvent(File.this, "ReadFrom",
-          ErrorMessages.ERROR_CANNOT_FIND_FILE, fileName);
-    } catch (IOException e) {
-      Log.e(LOG_TAG, "IOException", e);
-      form.dispatchErrorOccurredEvent(File.this, "ReadFrom",
-          ErrorMessages.ERROR_CANNOT_READ_FILE, fileName);
-    } finally {
-      if (input != null) {
+  @Override
+  protected void AsyncRead(final InputStream fileInput, final String fileName) {
+    // Start a thread to read file asynchronously
+    AsynchUtil.runAsynchronously(new Runnable() {
+      @Override
+      public void run() {
         try {
-          input.close();
+          final String text = readFromInputStream(fileInput);
+
+          activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+              GotText(text);
+            }
+          });
+        } catch (FileNotFoundException e) {
+          Log.e(LOG_TAG, "FileNotFoundException", e);
+          form.dispatchErrorOccurredEvent(File.this, "ReadFrom",
+              ErrorMessages.ERROR_CANNOT_FIND_FILE, fileName);
         } catch (IOException e) {
-          // do nothing...
+          Log.e(LOG_TAG, "IOException", e);
+          form.dispatchErrorOccurredEvent(File.this, "ReadFrom",
+              ErrorMessages.ERROR_CANNOT_READ_FILE, fileName);
         }
       }
-    }
+    });
   }
 
   /**
@@ -391,30 +324,9 @@ public class File extends AndroidNonvisibleComponent implements Component {
     // invoke the application's "AfterFileSaved" event handler.
     EventDispatcher.dispatchEvent(this, "AfterFileSaved", fileName);
   }
-
-  /**
-   * Returns absolute file path.
-   *
-   * @param filename the file used to construct the file path
-   */
-  private String AbsoluteFileName(String filename) {
-    if (filename.startsWith("/")) {
-      return Environment.getExternalStorageDirectory().getPath() + filename;
-    } else {
-      java.io.File dirPath = activity.getFilesDir();
-      if (isRepl) {
-        String path = Environment.getExternalStorageDirectory().getPath() + "/AppInventor/data/";
-        dirPath = new java.io.File(path);
-        if (!dirPath.exists()) {
-          dirPath.mkdirs();           // Make sure it exists
-        }
-      }
-      return dirPath.getPath() + "/" + filename;
-    }
-  }
   
   @SimpleProperty
   public String getSDCardPath() {
-  	return Environment.getExternalStorageDirectory().getPath();
+    return Environment.getExternalStorageDirectory().getPath();
   }
 }

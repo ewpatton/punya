@@ -1,10 +1,11 @@
 // -*- mode: java; c-basic-offset: 2; -*-
-// Copyright 2017-2018 MIT, All rights reserved
+// Copyright 2017-2020 MIT, All rights reserved
 // Released under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 package com.google.appinventor.components.runtime;
 
+import android.Manifest;
 import android.app.Activity;
 
 import android.database.Cursor;
@@ -33,6 +34,7 @@ import com.google.appinventor.components.common.YaVersion;
 
 import com.google.appinventor.components.runtime.errors.YailRuntimeError;
 
+import com.google.appinventor.components.runtime.util.BulkPermissionRequest;
 import com.google.appinventor.components.runtime.util.CloudDBJedisListener;
 import com.google.appinventor.components.runtime.util.FileUtil;
 import com.google.appinventor.components.runtime.util.JsonUtil;
@@ -50,10 +52,13 @@ import java.security.cert.X509Certificate;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.net.ssl.SSLContext;
@@ -101,11 +106,12 @@ import redis.clients.jedis.exceptions.JedisNoScriptException;
     nonVisible = true,
     iconName = "images/cloudDB.png")
 @UsesPermissions(permissionNames = "android.permission.INTERNET," +
-  "android.permission.ACCESS_NETWORK_STATE")
-
+  "android.permission.ACCESS_NETWORK_STATE," +
+  "android.permission.READ_EXTERNAL_STORAGE," +
+  "android.permission.WRITE_EXTERNAL_STORAGE")
 @UsesLibraries(libraries = "jedis.jar")
 public final class CloudDB extends AndroidNonvisibleComponent implements Component,
-  OnClearListener, OnDestroyListener {
+    OnClearListener, OnDestroyListener, ObservableDataSource<String, Future<List<?>>> {
   private static final boolean DEBUG = false;
   private static final String LOG_TAG = "CloudDB";
   private boolean importProject = false;
@@ -243,6 +249,13 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
   private final List<storedValue> storeQueue = Collections.synchronizedList(new ArrayList());
 
   private ConnectivityManager cm;
+
+  // Do we have storage permission yet
+  private boolean havePermission = false;
+
+  // Set of observers
+  private final HashSet<DataSink<ObservableDataSource<String, Future<List<?>>>>> dataSourceObservers
+      = new HashSet<>();
 
   private static class storedValue {
     private String tag;
@@ -575,7 +588,18 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
   @SimpleFunction(description = "Store a value at a tag.")
   public void StoreValue(final String tag, final Object valueToStore) {
     checkProjectIDNotBlank();
-
+    if (!havePermission) {
+      final CloudDB me = this;
+      form.askPermission(new BulkPermissionRequest(this, "CloudDB",
+          Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE) {
+          @Override
+          public void onGranted() {
+            me.havePermission = true;
+            StoreValue(tag, valueToStore);
+          }
+        });
+      return;
+    }
     final String value;
     NetworkInfo networkInfo = cm.getActiveNetworkInfo();
     boolean isConnected = networkInfo != null && networkInfo.isConnected();
@@ -732,11 +756,22 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
     "value but will cause a GotValue event to fire when the " +
     "value is looked up.")
   public void GetValue(final String tag, final Object valueIfTagNotThere) {
-    checkProjectIDNotBlank();
     if (DEBUG) {
       Log.d(LOG_TAG, "getting value ... for tag: " + tag);
     }
-    final AtomicReference<Object> value = new AtomicReference<Object>();
+    checkProjectIDNotBlank();
+    if (!havePermission) {
+      final CloudDB me = this;
+      form.askPermission(new BulkPermissionRequest(this, "CloudDB",
+          Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE) {
+          @Override
+          public void onGranted() {
+            me.havePermission = true;
+            GetValue(tag, valueIfTagNotThere);
+          }
+        });
+      return;
+    }
     Cursor cursor = null;
     SQLiteDatabase db = null;
     NetworkInfo networkInfo = cm.getActiveNetworkInfo();
@@ -747,37 +782,10 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
       // or the JSON representation of valueIfTagNotThere
       background.submit(new Runnable() {
           public void run() {
-            Jedis jedis = getJedis();
-            try {
-              if (DEBUG) {
-                Log.d(LOG_TAG,"about to call jedis.get()");
-              }
-              String returnValue = jedis.get(projectID + ":" + tag);
-              if (DEBUG) {
-                Log.d(LOG_TAG, "finished call jedis.get()");
-              }
-              if (returnValue != null) {
-                String val = JsonUtil.getJsonRepresentationIfValueFileName(returnValue);
-                if(val != null) value.set(val);
-                else value.set(returnValue);
-              }
-              else {
-                if (DEBUG) {
-                  Log.d(CloudDB.LOG_TAG,"Value retrieved is null");
-                }
-                value.set(JsonUtil.getJsonRepresentation(valueIfTagNotThere));
-              }
-            } catch (JSONException e) {
-              CloudDBError("JSON conversion error for " + tag);
-              return;
-            } catch (NullPointerException e) {
-              CloudDBError("System Error getting tag " + tag);
-              flushJedis(true);
-              return;
-            } catch (JedisException e) {
-              Log.e(LOG_TAG, "Exception in GetValue", e);
-              CloudDBError(e.getMessage());
-              flushJedis(true);
+            final AtomicReference<Object> value = getValueByTag(tag, valueIfTagNotThere);
+
+            // Value stored is null; Return
+            if (value.get() == null) {
               return;
             }
 
@@ -799,6 +807,57 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
     }
   }
 
+  /**
+   * Gets the specified value from the underlying Redis database, or
+   * returns the specified value if the tag is not present.
+   *
+   * The value is returned as an AtomicReference, and will contain
+   * a null value in case of exceptions.
+   *
+   * @param tag  tag of the value to get
+   * @param valueIfTagNotThere  value to set to the reference if tag is not present
+   * @return  AtomicReference containing the indicated value
+   */
+  private AtomicReference<Object> getValueByTag(final String tag, final Object valueIfTagNotThere) {
+    AtomicReference<Object> value = new AtomicReference<Object>();
+
+    Jedis jedis = getJedis();
+    try {
+      if (DEBUG) {
+        Log.d(LOG_TAG,"about to call jedis.get()");
+      }
+      String returnValue = jedis.get(projectID + ":" + tag);
+      if (DEBUG) {
+        Log.d(LOG_TAG, "finished call jedis.get()");
+      }
+      if (returnValue != null) {
+        String val = JsonUtil.getJsonRepresentationIfValueFileName(returnValue);
+        if(val != null) value.set(val);
+        else value.set(returnValue);
+      }
+      else {
+        if (DEBUG) {
+          Log.d(CloudDB.LOG_TAG,"Value retrieved is null");
+        }
+        value.set(JsonUtil.getJsonRepresentation(valueIfTagNotThere));
+      }
+    } catch (JSONException e) {
+      CloudDBError("JSON conversion error for " + tag);
+      value.set(null);
+    } catch (NullPointerException e) {
+      CloudDBError("System Error getting tag " + tag);
+      flushJedis(true);
+      value.set(null);
+    } catch (JedisException e) {
+      Log.e(LOG_TAG, "Exception in GetValue", e);
+      CloudDBError(e.getMessage());
+      flushJedis(true);
+      value.set(null);
+    }
+
+    return value;
+  }
+ 
   /**
    * Returns `true`{:.logic.block} if we are on the network and will likely be able to connect to
    * the `CloudDB` server.
@@ -1006,6 +1065,8 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
           try {
             Jedis jedis = getJedis();
             jedis.del(projectID + ":" + tag);
+            // Notify all the Data Source observers of the change
+            notifyDataObservers(tag, null);
           } catch (Exception e) {
             CloudDBError(e.getMessage());
             flushJedis(true);
@@ -1089,6 +1150,9 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
     }
     final Object finalTagValue = tagValue;
 
+    // Notify all the Data Source observers of the change
+    notifyDataObservers(tag, finalTagValue);
+
     androidUIHandler.post(new Runnable() {
       public void run() {
         // Invoke the application's "DataChanged" event handler
@@ -1128,6 +1192,10 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
     if(token.equals("")){
       throw new RuntimeException("CloudDB Token property cannot be blank");
     }
+  }
+
+  public Form getForm() {
+    return form;
   }
 
   public Jedis getJedis(boolean createNew) {
@@ -1247,7 +1315,7 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
         throw new YailRuntimeError("Invalid fileName, was " + originalFileName, "ReadFrom");
       }
       String extension = getFileExtension(fileName);
-      byte [] content = FileUtil.readFile(fileName);
+      byte [] content = FileUtil.readFile(form, fileName);
       String encodedContent = Base64.encodeToString(content, Base64.DEFAULT);
       Object [] results = new Object[2];
       results[0] = "." + extension;
@@ -1358,6 +1426,61 @@ public final class CloudDB extends AndroidNonvisibleComponent implements Compone
     } catch (Exception e) {
       Log.e(LOG_TAG, "Getting System Certificates", e);
       return new X509Certificate[0];
+    }
+  }
+
+  /**
+   * Returns the specified List object identified by the key as a Future object.
+   * If the value is not a List object, or it does not exist, an empty List
+   * is returned.
+   *
+   * The return type being a Future object ensures that the data is
+   * retrieved from the database asynchronously.
+   *
+   * @param key  Key of the value to retrieve
+   * @return  Future object holding the value as a List object, or empty List if not applicable
+   */
+  @Override
+  public Future<List<?>> getDataValue(final String key) {
+    return background.submit(new Callable<List<?>>() {
+      @Override
+      public List call() {
+        // Get the value identified by the tag (key) or an empty
+        // YailList if not present
+        AtomicReference<Object> valueReference = getValueByTag(key, new YailList());
+
+        // Get the value as a String
+        String valueString = (String) valueReference.get();
+
+        // Parse the value from JSON
+        Object value = JsonUtil.getObjectFromJson(valueString);
+
+        // Value is a List object; Convert and return it
+        if (value instanceof List) {
+          return (List)value;
+        }
+
+        // Return empty list otherwise
+        return new ArrayList();
+      }
+    });
+  }
+
+  @Override
+  public void addDataObserver(DataSink<ObservableDataSource<String, Future<List<?>>>> dataComponent) {
+    dataSourceObservers.add(dataComponent);
+  }
+
+  @Override
+  public void removeDataObserver(DataSink<ObservableDataSource<String, Future<List<?>>>> dataComponent) {
+    dataSourceObservers.remove(dataComponent);
+  }
+
+  @Override
+  public void notifyDataObservers(String key, Object newValue) {
+    // Notify each Chart Data observer component of the Data value change
+    for (DataSink<ObservableDataSource<String, Future<List<?>>>> dataComponent : dataSourceObservers) {
+      dataComponent.onDataSourceValueChange(this, key, newValue);
     }
   }
 }

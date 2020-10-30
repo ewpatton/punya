@@ -52,11 +52,11 @@ import java.util.Map;
     MEDIA("Media"),
     ANIMATION("Drawing and Animation"),
     MAPS("Maps"),
+    CHARTS("Charts"),
     SENSORS("Sensors"),
     SOCIAL("Social"),
     STORAGE("Storage"),
     CONNECTIVITY("Connectivity"),
-    MAPVIZ("Map & Visualization"),
     CLOUDSTORAGE("Cloud Storage"),
     LINKEDDATA("Linked Data"),
     LEGOMINDSTORMS("LEGO\u00AE MINDSTORMS\u00AE"),
@@ -76,6 +76,7 @@ import java.util.Map;
       DOC_MAP.put("Media", "media");
       DOC_MAP.put("Drawing and Animation", "animation");
       DOC_MAP.put("Maps", "maps");
+      DOC_MAP.put("Charts", "charts");
       DOC_MAP.put("Sensors", "sensors");
       DOC_MAP.put("Social", "social");
       DOC_MAP.put("Storage", "storage");
