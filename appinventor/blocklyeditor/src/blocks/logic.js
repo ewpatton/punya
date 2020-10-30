@@ -569,6 +569,18 @@ Blockly.Blocks['logic_qname'] = {
   }
 }
 
+var NonRepeatingAlert = {
+  last: -1,
+
+  alert: function(msg) {
+    var now = new Date().getTime();
+    if (this.last == -1 || (now - this.last) >= 2500) {
+      this.last = now;
+      alert(msg);
+    }
+  }
+}
+
 var SwTerms = {
 	map: {},
 
@@ -588,12 +600,14 @@ var SwTerms = {
 			"{ ?uri a rdfs:Class } UNION " +
 			"{ ?uri a owl:ObjectProperty } UNION " +
 			"{ ?uri a owl:DatatypeProperty } UNION " +
-			"{ ?uri a rdf:Property  } " +
+			"{ ?uri a rdf:Property  } UNION " +
+			"{ ?uri a owl:NamedIndividual }" +
 			"FILTER (STRSTARTS(str(?uri), '" + uri + "')) " +
 			"} ORDER BY ?uri";
 		// console.log(query);
 
-		var url = "http://ppr.cs.dal.ca:3010/terms/query?query=" + encodeURIComponent(query);
+    var endpoint = "http://ppr.cs.dal.ca:3010/terms/query";
+		var url = endpoint + "?query=" + encodeURIComponent(query);
 		console.log("calling: " + url);
 
 		var xhttp = new XMLHttpRequest();
@@ -610,6 +624,8 @@ var SwTerms = {
             onLoadComplete(terms);
           }, 100);
         } else {
+          NonRepeatingAlert.alert("Cannot reach SPARQL endpoint: " + endpoint + ". " +
+            "Dropdowns for qualified-names will not display properly.");
           console.log("SwTerms: not-ok xhttp response:", this.status);
         }
       }
