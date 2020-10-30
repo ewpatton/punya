@@ -698,7 +698,7 @@ Blockly.Blocks['logic_qname_select'] = {
     }
     var input = this.appendDummyInput('LOCALNAME');
     if (terms === null)
-      input.appendField("...");
+      input.appendField("...", 'URI');
     else
       input.appendField(new Blockly.FieldDropdown(terms), 'URI');
   },
