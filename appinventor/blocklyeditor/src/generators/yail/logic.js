@@ -181,4 +181,29 @@ Blockly.Yail['logic_sparql_select'] = function() {
   return [ code, Blockly.Yail.ORDER_ATOMIC ];
 }
 
+// based on
+// Blockly.Yail['text_join']
+Blockly.Yail['logic_sparql_uri'] = function() {
+  var code = Blockly.Yail.YAIL_CALL_YAIL_PRIMITIVE + "string-append"
+        + Blockly.Yail.YAIL_SPACER + Blockly.Yail.YAIL_OPEN_COMBINATION
+        + Blockly.Yail.YAIL_LIST_CONSTRUCTOR + Blockly.Yail.YAIL_SPACER;
+
+  code += "'<'" + Blockly.Yail.YAIL_SPACER;
+  code += Blockly.Yail.valueToCode(this, 'URI', Blockly.Yail.ORDER_NONE) + Blockly.Yail.YAIL_SPACER;
+  code += "'>'";
+
+  code += Blockly.Yail.YAIL_CLOSE_COMBINATION;
+  code = code + Blockly.Yail.YAIL_SPACER + Blockly.Yail.YAIL_QUOTE
+      + Blockly.Yail.YAIL_OPEN_COMBINATION;
+  for(var i=0;i<3;i++) {
+    code += "text" + Blockly.Yail.YAIL_SPACER;
+  }
+  code += Blockly.Yail.YAIL_CLOSE_COMBINATION + Blockly.Yail.YAIL_SPACER;
+  code += Blockly.Yail.YAIL_DOUBLE_QUOTE + "join" +
+    Blockly.Yail.YAIL_DOUBLE_QUOTE + Blockly.Yail.YAIL_CLOSE_COMBINATION;
+
+  console.log("code:", code);
+  return [code, Blockly.Yail.ORDER_ATOMIC];
+}
+
 /// endregion
