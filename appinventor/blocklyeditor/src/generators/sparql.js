@@ -518,11 +518,6 @@ Blockly.SPARQL['logic_negate'] = function() {
   return [code + arg, Blockly.SPARQL.ORDER_UNARY];
 }
 
-function wrapSwTerm(term) {
-  term = (term.startsWith("http:") ? "<" + term + ">" : term);
-  return term;
-}
-
 /**
  * Convert component getters into SPARQL.
  *
@@ -532,7 +527,7 @@ function wrapSwTerm(term) {
 Blockly.SPARQL['component_set_get'] = function() {
   Blockly.SPARQL.yailBlocks++;
   var code = '```yail(sparql-quote ';
-  code += wrapSwTerm(Blockly.Yail.blockToCode(this)[0]);
+  code += Blockly.Yail.blockToCode(this)[0];
   code += ')```';
   return [code, Blockly.SPARQL.ORDER_ATOMIC];
 }
@@ -594,7 +589,7 @@ Blockly.SPARQL['procedures_callreturn'] = function() {
 Blockly.SPARQL['lexical_variable_get'] = function() {
   Blockly.SPARQL.yailBlocks++;
   var code = '```yail';
-  code += wrapSwTerm(Blockly.Yail.blockToCode(this)[0]);
+  code += Blockly.Yail.blockToCode(this)[0];
   code += '```';
   return [code, Blockly.SPARQL.ORDER_ATOMIC];
 }
