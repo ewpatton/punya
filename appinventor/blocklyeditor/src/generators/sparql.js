@@ -593,3 +593,68 @@ Blockly.SPARQL['lexical_variable_get'] = function() {
   code += '```';
   return [code, Blockly.SPARQL.ORDER_ATOMIC];
 }
+
+/**
+ * Trims a string input in SPARQL.
+ *
+ * @this Blockly.BlockSvg
+ * @returns {[string, number]}
+*/
+
+Blockly.SPARQL['text_trim'] = function() {
+  Blockly.SPARQL.yailBlocks++;
+  
+  var argument = Blockly.SPARQL.valueToCode(this, 'TEXT', Blockly.Yail.ORDER_NONE) || "\"\"";
+  argument = argument.replace(/```(yail)?/g, "");
+
+  var code = '```yail';
+  // code += '(call-yail-primitive string-append (*list-for-runtime* "\\"" ';
+
+  code += Blockly.Yail.YAIL_CALL_YAIL_PRIMITIVE;
+  code += 'string-trim' + Blockly.Yail.YAIL_SPACER;
+  code += Blockly.Yail.YAIL_OPEN_COMBINATION + Blockly.Yail.YAIL_LIST_CONSTRUCTOR + Blockly.Yail.YAIL_SPACER + argument + Blockly.Yail.YAIL_CLOSE_COMBINATION
+    + Blockly.Yail.YAIL_SPACER;
+  code += Blockly.Yail.YAIL_QUOTE + Blockly.Yail.YAIL_OPEN_COMBINATION + 'text' + Blockly.Yail.YAIL_CLOSE_COMBINATION +
+    Blockly.Yail.YAIL_SPACER;
+  code += '"trim"';
+  code += Blockly.Yail.YAIL_CLOSE_COMBINATION;
+
+  // code += ' "\\"") ' + "'" + '(text text text) "join")';
+  code += '```';
+
+  console.log("text_trim", code);
+  return [ code, Blockly.Yail.ORDER_ATOMIC ];
+};
+
+/**
+ * Convert an input to lowercase in SPARQL.
+ *
+ * @this Blockly.BlockSvg
+ * @returns {[string, number]}
+*/
+Blockly.SPARQL['text_changeCase'] = function() {
+  // String change case.
+  var mode = this.getFieldValue('OP');
+  var tuple = Blockly.SPARQL.text_changeCase.OPERATORS[mode];
+  var operator = tuple[0];
+  var str1 = "\"" + operator + "(\"";
+  var str2 = "\")\"";
+
+  var argument = Blockly.SPARQL.valueToCode(this, 'TEXT', Blockly.Yail.ORDER_NONE) || "\"\"";
+  wrappedArgument = "\"" + argument + "\"";
+  // wrappedArgument = "(sparql-quote " + argument + ")";
+
+  Blockly.SPARQL.yailBlocks++;
+  var code = '```yail';
+  code += "(call-yail-primitive string-append (*list-for-runtime* " + str1 + " " + wrappedArgument + " " + str2 + ") "
+    + "'(text text text) \"join\")";
+  code += '```';
+
+  console.log("text_changeCase", code);
+  return [ code, Blockly.Yail.ORDER_ATOMIC ];
+};
+
+Blockly.SPARQL['text_changeCase'].OPERATORS = {
+  UPCASE: ['ucase' ],
+  DOWNCASE: ['lcase' ]
+};
