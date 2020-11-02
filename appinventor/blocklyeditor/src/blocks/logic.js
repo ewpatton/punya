@@ -606,8 +606,10 @@ var SwTerms = {
 			"} ORDER BY ?uri";
 		// console.log(query);
 
-	// TODO make this configurable
-    var endpoint = "https://punya-sparql.csail.mit.edu/terms/query";
+
+		// TODO make this configurable
+	    var endpoint = "https://punya-sparql.csail.mit.edu/terms/query";
+
 		var url = endpoint + "?query=" + encodeURIComponent(query);
 		console.log("calling: " + url);
 
