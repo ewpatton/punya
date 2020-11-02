@@ -606,7 +606,8 @@ var SwTerms = {
 			"} ORDER BY ?uri";
 		// console.log(query);
 
-    var endpoint = "http://ppr.cs.dal.ca:3010/terms/query";
+	// TODO make this configurable
+    var endpoint = "https://punya-sparql.csail.mit.edu/terms/query";
 		var url = endpoint + "?query=" + encodeURIComponent(query);
 		console.log("calling: " + url);
 

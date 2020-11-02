@@ -255,7 +255,8 @@ Blockly.Blocks['text_changeCase'] = {
     this.setColour(Blockly.TEXT_CATEGORY_HUE);
     this.setOutput(true, Blockly.Blocks.Utilities.YailTypeToBlocklyType("text", Blockly.Blocks.Utilities.OUTPUT));
     this.appendValueInput('TEXT')
-        .setCheck(Blockly.Blocks.Utilities.YailTypeToBlocklyType("text", Blockly.Blocks.Utilities.INPUT))
+        // TODO temporary
+        //.setCheck(Blockly.Blocks.Utilities.YailTypeToBlocklyType("text", Blockly.Blocks.Utilities.INPUT))
         .appendField(new Blockly.FieldDropdown(this.OPERATORS), 'OP');
     var thisBlock = this;
     this.setTooltip(function () {
